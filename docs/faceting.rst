@@ -168,7 +168,7 @@ might look like this::
                     <dt>Author</dt>
                     {# Provide only the top 5 authors #}
                     {% for author in facets.fields.author|slice:":5" %}
-                        <dd><a href="{{ request.get_full_path }}&amp;selected_facets=author:{{ author.0|urlencode }}">{{ author.0 }}</a> ({{ author.1 }})</dd>
+                        <dd><a href="{{ request.get_full_path }}&amp;selected_facets=author_exact:{{ author.0|urlencode }}">{{ author.0 }}</a> ({{ author.1 }})</dd>
                     {% endfor %}
                 {% else %}
                     <p>No author facets.</p>
@@ -190,8 +190,8 @@ might look like this::
     {% endif %}
 
 Displaying the facets is a matter of looping through the facets you want and
-providing the UI to suit. The ``author_exact.0`` is the facet text from the backend
-and the ``author_exact.1`` is the facet count.
+providing the UI to suit. The ``author.0`` is the facet text from the backend
+and the ``author.1`` is the facet count.
 
 4. Narrowing The Search
 -----------------------

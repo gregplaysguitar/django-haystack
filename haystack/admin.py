@@ -1,5 +1,6 @@
 from django.contrib.admin.options import ModelAdmin
-from django.contrib.admin.views.main import ChangeList, MAX_SHOW_ALL_ALLOWED
+from django.contrib.admin.views.main import (ChangeList, MAX_SHOW_ALL_ALLOWED,
+                                             SEARCH_VAR)
 from django.core.exceptions import PermissionDenied, ImproperlyConfigured
 from django.core.paginator import Paginator, InvalidPage
 from django.shortcuts import render_to_response
@@ -24,16 +25,16 @@ except ImportError:
 
 class SearchChangeList(ChangeList):
     def get_results(self, request):
-        if not 'q' in request.GET:
+        if not SEARCH_VAR in request.GET:
             return super(SearchChangeList, self).get_results(request)
         
         # Note that pagination is 0-based, not 1-based.
-        sqs = SearchQuerySet().models(self.model).auto_query(request.GET['q']).load_all()
+        sqs = SearchQuerySet().models(self.model).auto_query(request.GET[SEARCH_VAR]).load_all()
         
         paginator = Paginator(sqs, self.list_per_page)
         # Get the number of objects, with admin filters applied.
         result_count = paginator.count
-        full_result_count = result_count
+        full_result_count = SearchQuerySet().models(self.model).all().count()
         
         can_show_all = result_count <= MAX_SHOW_ALL_ALLOWED
         multi_page = result_count > self.list_per_page
@@ -61,7 +62,7 @@ class SearchModelAdmin(ModelAdmin):
         if not self.has_change_permission(request, None):
             raise PermissionDenied
         
-        if not 'q' in request.GET:
+        if not SEARCH_VAR in request.GET:
             # Do the usual song and dance.
             return super(SearchModelAdmin, self).changelist_view(request, extra_context)
         
@@ -76,17 +77,20 @@ class SearchModelAdmin(ModelAdmin):
         # Why copy-paste a few lines when you can copy-paste TONS of lines?
         list_display = list(self.list_display)
         
-        try:
-            list_display.remove('action_checkbox')
-        except ValueError:
-            pass
-        
         changelist = SearchChangeList(request, self.model, list_display, self.list_display_links, self.list_filter, self.date_hierarchy, self.search_fields, self.list_select_related, self.list_per_page, self.list_editable, self)
         formset = changelist.formset = None
         media = self.media
-        action_form = None
         
-        selection_note = ungettext('of %(count)d selected',
+        # Build the action form and populate it with available actions.
+        # Check actions to see if any are available on this changelist
+        actions = self.get_actions(request)
+        if actions:
+            action_form = self.action_form(auto_id=None)
+            action_form.fields['action'].choices = self.get_action_choices(request)
+        else:
+            action_form = None
+        
+        selection_note = ungettext('0 of %(count)d selected',
             'of %(count)d selected', len(changelist.result_list))
         selection_note_all = ungettext('%(total_count)s selected',
             'All %(total_count)s selected', changelist.result_count)

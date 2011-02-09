@@ -28,9 +28,27 @@ Included with Haystack are the following field types:
 * ``CharField``
 * ``DateField``
 * ``DateTimeField``
+* ``EdgeNgramField``
 * ``FloatField``
 * ``IntegerField``
 * ``MultiValueField``
+* ``NgramField``
+
+And equivalent faceted versions:
+
+* ``FacetBooleanField``
+* ``FacetCharField``
+* ``FacetDateField``
+* ``FacetDateTimeField``
+* ``FacetFloatField``
+* ``FacetIntegerField``
+* ``FacetMultiValueField``
+
+.. note::
+
+  There is no faceted variant of the n-gram fields. Because of how the engine
+  generates n-grams, faceting on these field types (``NgramField`` &
+  ``EdgeNgram``) would make very little sense.
 
 
 Usage
@@ -167,6 +185,14 @@ Example::
 
     bio = CharField(use_template=True, template_name='myapp/data/bio.txt')
 
+You can also provide a list of templates, as ``loader.select_template`` is used
+under the hood.
+
+Example::
+
+    bio = CharField(use_template=True, template_name=['myapp/data/bio.txt', 'myapp/bio.txt', 'bio.txt'])
+
+
 ``use_template``
 ----------------
 
@@ -187,7 +213,7 @@ Method Reference
 ``__init__``
 ------------
 
-.. method:: SearchField.__init__(self, model_attr=None, use_template=False, template_name=None, document=False, indexed=True, stored=True, default=NOT_PROVIDED, null=False)
+.. method:: SearchField.__init__(self, model_attr=None, use_template=False, template_name=None, document=False, indexed=True, stored=True, faceted=False, default=NOT_PROVIDED, null=False, index_fieldname=None, facet_class=None, boost=1.0, weight=None)
 
 Instantiates a fresh ``SearchField`` instance.
 
