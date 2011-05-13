@@ -3,15 +3,11 @@ import sys
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.loading import get_model
-from haystack.backends import BaseSearchBackend, BaseSearchQuery, log_query
+from haystack.backends import BaseSearchBackend, BaseSearchQuery, log_query, EmptyResults
 from haystack.constants import ID, DJANGO_CT, DJANGO_ID
 from haystack.exceptions import MissingDependency, MoreLikeThisError
 from haystack.models import SearchResult
 from haystack.utils import get_identifier
-try:
-    set
-except NameError:
-    from sets import Set as set
 try:
     from django.db.models.sql.query import get_proxied_model
 except ImportError:
@@ -24,11 +20,6 @@ except ImportError:
 
 
 BACKEND_NAME = 'solr'
-
-
-class EmptyResults(object):
-    hits = 0
-    docs = []
 
 
 class SearchBackend(BaseSearchBackend):
@@ -247,7 +238,11 @@ class SearchBackend(BaseSearchBackend):
         return self._process_results(raw_results, result_class=result_class)
     
     def _process_results(self, raw_results, highlight=False, result_class=None):
-        from haystack import site
+        if not self.site:
+            from haystack import site
+        else:
+            site = self.site
+        
         results = []
         hits = raw_results.hits
         facets = {}
@@ -300,7 +295,7 @@ class SearchBackend(BaseSearchBackend):
                 if raw_result[ID] in getattr(raw_results, 'highlighting', {}):
                     additional_fields['highlighted'] = raw_results.highlighting[raw_result[ID]]
                 
-                result = result_class(app_label, model_name, raw_result[DJANGO_ID], raw_result['score'], **additional_fields)
+                result = result_class(app_label, model_name, raw_result[DJANGO_ID], raw_result['score'], searchsite=self.site, **additional_fields)
                 results.append(result)
             else:
                 hits -= 1
@@ -384,6 +379,10 @@ class SearchQuery(BaseSearchQuery):
 
     def build_query_fragment(self, field, filter_type, value):
         result = ''
+        
+        # Handle when we've got a ``ValuesListQuerySet``...
+        if hasattr(value, 'values_list'):
+            value = list(value)
         
         if not isinstance(value, (list, tuple)):
             # Convert whatever we find to what pysolr wants.
