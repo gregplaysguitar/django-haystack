@@ -1,6 +1,6 @@
 import datetime
 from django.test import TestCase
-from haystack.backends.solr_backend import SearchBackend, SearchQuery
+from haystack import connections
 from haystack.models import SearchResult
 from haystack.query import SQ
 from core.models import MockModel, AnotherMockModel
@@ -9,7 +9,7 @@ from core.models import MockModel, AnotherMockModel
 class SolrSearchQueryTestCase(TestCase):
     def setUp(self):
         super(SolrSearchQueryTestCase, self).setUp()
-        self.sq = SearchQuery(backend=SearchBackend())
+        self.sq = connections['default'].get_query()
     
     def test_build_query_all(self):
         self.assertEqual(self.sq.build_query(), '*:*')
@@ -109,3 +109,8 @@ class SolrSearchQueryTestCase(TestCase):
         # Reset to default.
         self.sq.set_result_class(None)
         self.assertTrue(issubclass(self.sq.result_class, SearchResult))
+    
+    def test_in_filter_values_list(self):
+        self.sq.add_filter(SQ(content='why'))
+        self.sq.add_filter(SQ(title__in=MockModel.objects.values_list('id', flat=True)))
+        self.assertEqual(self.sq.build_query(), u'(why AND (title:"1" OR title:"2" OR title:"3"))')
